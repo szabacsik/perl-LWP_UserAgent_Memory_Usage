@@ -14,7 +14,7 @@ local $| = 1;
 my $i;
 
 query (); #once
-my $mu = Memory::Usage -> new ( keep_alive => 0 );
+my $mu = Memory::Usage -> new;
 $mu -> record ( 'started' );
 
 #main loop
@@ -33,7 +33,7 @@ $mu -> dump ();
 #http query
 sub query
 {
-	my $user_agent = LWP::UserAgent -> new;
+	my $user_agent = LWP::UserAgent -> new ( keep_alive => 0 );
 	$user_agent -> timeout ( 60 );
 	$user_agent -> agent ( "NXLog" );
 	#my $headers = HTTP::Headers -> new ();
