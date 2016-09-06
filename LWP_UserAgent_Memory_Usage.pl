@@ -33,7 +33,7 @@ $mu -> dump ();
 #http query
 sub query
 {
-	my $user_agent = LWP::UserAgent -> new;
+	my $user_agent = LWP::UserAgent -> new(ssl_opts => { verify_hostname => 0 });
 	$user_agent -> timeout ( 60 );
 	$user_agent -> agent ( "NXLog" );
 	my $headers = HTTP::Headers -> new ();
@@ -67,5 +67,14 @@ Results:
      0  51852 ( 51852)  15312 ( 15312)   4004 (  4004)      8 (     8)  11612 ( 11612) started
     69  51852 (     0)  15596 (   284)   4112 (   108)      8 (     0)  11612 (     0) finished
 
+
+after 
+
+my $user_agent = LWP::UserAgent -> new(ssl_opts => { verify_hostname => 0 });
+
+./LWP_UserAgent_Memory_Usage.pl
+  time    vsz (  diff)    rss (  diff) shared (  diff)   code (  diff)   data (  diff)
+     0  51840 ( 51840)  15408 ( 15408)   4084 (  4084)      8 (     8)  11600 ( 11600) started
+    69  51948 (   108)  15688 (   280)   4188 (   104)      8 (     0)  11708 (   108) finished
 =cut
 
