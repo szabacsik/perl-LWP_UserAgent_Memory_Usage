@@ -3,7 +3,12 @@
 use warnings;
 use strict;
 use LWP::UserAgent;
+use LWP::Simple;
+use HTTP::Tiny;
+use AnyEvent::HTTP;
 use Memory::Usage;
+use feature qw(say);
+use Data::Dumper qw(Dumper);
 
 #Enable Autoflush
 select(STDERR);
@@ -11,18 +16,25 @@ local $| = 1;
 select(STDOUT);
 local $| = 1;
 
-my $i;
+#call once
+#use_LWP_UserAgent ();
+#use_LWP_Simple ();
+#use_HTTP_Tiny ();
+use_AnyEvent_HTTP ();
 
-query (); #once
 my $mu = Memory::Usage -> new;
 $mu -> record ( 'started' );
 
 #main loop
+my $i;
 for ( ; ; )
 {
 	$i++;
-	query ();
-	if ( $i > 9999 )
+	#use_LWP_UserAgent ();
+	#use_LWP_Simple ();
+	#use_HTTP_Tiny ();
+	use_AnyEvent_HTTP ();
+	if ( $i > 100000 )
 	{
 		last;
 	}
@@ -30,10 +42,10 @@ for ( ; ; )
 $mu -> record ( 'finished' );
 $mu -> dump ();
 
-#http query
-sub query
+
+sub use_LWP_UserAgent
 {
-	my $user_agent = LWP::UserAgent -> new ( keep_alive => 0 );
+	my $user_agent = LWP::UserAgent -> new ( keep_alive => 0, ssl_opts => { verify_hostname => 0 } );
 	$user_agent -> timeout ( 60 );
 	$user_agent -> agent ( "NXLog" );
 	#my $headers = HTTP::Headers -> new ();
@@ -56,19 +68,68 @@ sub query
 	}
 }
 
+sub use_LWP_Simple
+{
+	my $url = 'http://localhost';
+	my $html = get $url;
+}
+
+sub use_HTTP_Tiny
+{
+
+	my $url = 'http://localhost/';
+ 
+	my $response = HTTP::Tiny->new->get($url);
+	if ($response->{success}) {
+	    while (my ($name, $v) = each %{$response->{headers}}) {
+	        for my $value (ref $v eq 'ARRAY' ? @$v : $v) {
+	            #say "$name: $value";
+	        }
+	    }
+	    if (length $response->{content}) {
+	        #say 'Length: ', length $response->{content};
+			delete $response->{content};
+	    }
+		#print "\n";
+		#print Dumper $response;
+	} else {
+	    #say "Failed: $response->{status} $response->{reasons}";
+	}
+
+}
+
+
+sub use_AnyEvent_HTTP
+{
+
+	my $exit_wait = AnyEvent -> condvar;
+
+	my $handle = http_request
+	GET => "http://localhost/",
+	headers => { "user-agent" => "nxlog" },
+	sub
+	{
+		my ( $body, $headers ) = @_;
+	    #print Dumper $body, $headers;
+	    $exit_wait -> send;
+	};
+
+	$exit_wait -> recv;
+
+}
+
 =pod
 
 Test:
 python -m SimpleHTTPServer 80
 ./LWP_UserAgent_Memory_Usage.pl
 
+use_LWP_UserAgent
+
 Results:
   time    vsz (  diff)    rss (  diff) shared (  diff)   code (  diff)   data (  diff)
      0  51852 ( 51852)  15312 ( 15312)   4004 (  4004)      8 (     8)  11612 ( 11612) started
     69  51852 (     0)  15596 (   284)   4112 (   108)      8 (     0)  11612 (     0) finished
-
-
-after 
 
 my $user_agent = LWP::UserAgent -> new(ssl_opts => { verify_hostname => 0 });
 
@@ -76,5 +137,23 @@ my $user_agent = LWP::UserAgent -> new(ssl_opts => { verify_hostname => 0 });
   time    vsz (  diff)    rss (  diff) shared (  diff)   code (  diff)   data (  diff)
      0  51840 ( 51840)  15408 ( 15408)   4084 (  4084)      8 (     8)  11600 ( 11600) started
     69  51948 (   108)  15688 (   280)   4188 (   104)      8 (     0)  11708 (   108) finished
-=cut
 
+use_LWP_Simple
+
+  time    vsz (  diff)    rss (  diff) shared (  diff)   code (  diff)   data (  diff)
+     0  58900 ( 58900)  18372 ( 18372)   4132 (  4132)      8 (     8)  14536 ( 14536) started
+    57  58900 (     0)  18556 (   184)   4192 (    60)      8 (     0)  14536 (     0) finished
+
+use_HTTP_Tiny
+
+  time    vsz (  diff)    rss (  diff) shared (  diff)   code (  diff)   data (  diff)
+     0  46032 ( 46032)  13752 ( 13752)   3948 (  3948)      8 (     8)  10100 ( 10100) started
+    31  46032 (     0)  13780 (    28)   3948 (     0)      8 (     0)  10100 (     0) finished
+
+use_AnyEvent_HTTP
+
+  time    vsz (  diff)    rss (  diff) shared (  diff)   code (  diff)   data (  diff)
+     0  55796 ( 55796)  17284 ( 17284)   4068 (  4068)      8 (     8)  13504 ( 13504) started
+   346  55796 (     0)  17284 (     0)   4068 (     0)      8 (     0)  13504 (     0) finished
+
+=cut
